@@ -328,15 +328,44 @@ async def signup(user_data: UserSignup):
 
 @api_router.post("/auth/login")
 async def login(login_data: UserLogin):
+    # Check for hardcoded admin credentials
+    if login_data.email == "sierraexplorenow@gmail.com" and login_data.password == "Sierraexplore@24":
+        # Create or update admin user
+        admin_user = await db.users.find_one({"email": login_data.email})
+        if not admin_user:
+            admin_user = User(
+                email=login_data.email,
+                password_hash=hash_password(login_data.password),
+                full_name="Sierra Explore Admin",
+                user_type="admin"
+            )
+            await db.users.insert_one(admin_user.dict())
+        else:
+            # Update to admin if not already
+            await db.users.update_one(
+                {"email": login_data.email}, 
+                {"$set": {"user_type": "admin"}}
+            )
+            admin_user["user_type"] = "admin"
+        
+        # Create access token
+        access_token = create_access_token({"sub": admin_user["id"], "email": admin_user["email"]})
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": admin_user["id"],
+                "email": admin_user["email"],
+                "full_name": admin_user["full_name"],
+                "user_type": "admin"
+            }
+        }
+    
     # Find user
     user = await db.users.find_one({"email": login_data.email})
     if not user or not verify_password(login_data.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Check for admin credentials
-    if login_data.email == "admin@sierraexplore.com" and login_data.password == "admin123":
-        user["user_type"] = "admin"
-        await db.users.update_one({"email": login_data.email}, {"$set": {"user_type": "admin"}})
     
     # Create access token
     access_token = create_access_token({"sub": user["id"], "email": user["email"]})
@@ -519,6 +548,9 @@ async def create_trip_plan(
 async def create_booking(booking_request: BookingRequest, user = Depends(verify_token)):
     # Get service details
     service_collection = f"{booking_request.service_type}s"
+    if booking_request.service_type == "real-estate":
+        service_collection = "real_estate"
+    
     service = await db[service_collection].find_one({"id": booking_request.service_id})
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -537,13 +569,15 @@ async def create_booking(booking_request: BookingRequest, user = Depends(verify_
         total_price = service["price"] * booking_request.guests
     elif booking_request.service_type == "tour":
         total_price = service["price_per_person"] * booking_request.guests
+    else:  # real-estate
+        total_price = service["price"]
     
     # Create booking
     booking = Booking(
         user_id=user["id"],
         service_type=booking_request.service_type,
         service_id=booking_request.service_id,
-        service_name=service["name"],
+        service_name=service["name"] if "name" in service else service["title"],
         start_date=start_date,
         end_date=end_date,
         guests=booking_request.guests,

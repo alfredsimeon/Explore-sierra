@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaEdit, FaTrash, FaEye, FaSave, FaTimes, FaHotel, FaCar, FaCalendarAlt, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
 import { MdEventNote, MdTour, MdHome } from 'react-icons/md';
@@ -8,7 +9,8 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 // Admin Service Management Component
-export const AdminServiceManagement = ({ serviceType }) => {
+export const AdminServiceManagement = () => {
+  const { serviceType } = useParams();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -222,7 +224,7 @@ export const AdminServiceManagement = ({ serviceType }) => {
           </div>
           <button
             onClick={handleCreate}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-emer ald-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
           >
             <FaPlus />
             <span>Add New</span>
