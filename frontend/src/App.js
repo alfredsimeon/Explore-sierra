@@ -1835,7 +1835,7 @@ const AdminDashboard = () => {
       await axios.post(`${API}/admin/init-sample-data`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert('Sample data initialized successfully!');
+      alert('🎉 Sierra Leone sample data initialized successfully!\n\nYou can now:\n• Browse authentic Sierra Leone hotels\n• Explore local tours and events\n• Manage car rentals\n• View real estate listings');
       window.location.reload();
     } catch (error) {
       console.error('Error initializing sample data:', error);
@@ -1863,24 +1863,45 @@ const AdminDashboard = () => {
           animate={{ y: 0, opacity: 1 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-            Admin Dashboard
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+            Sierra Explore Admin
           </h1>
-          <p className="text-xl text-gray-600">Manage Sierra Explore platform</p>
+          <p className="text-xl text-gray-600">Manage your Sierra Leone tourism platform</p>
         </motion.div>
         
+        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
-            { title: "Hotels", count: stats?.hotels || 0, icon: FaHotel, path: "/admin/hotels" },
-            { title: "Cars", count: stats?.cars || 0, icon: FaCar, path: "/admin/cars" },
-            { title: "Events", count: stats?.events || 0, icon: MdEventNote, path: "/admin/events" },
-            { title: "Tours", count: stats?.tours || 0, icon: MdTour, path: "/admin/tours" },
-            { title: "Properties", count: stats?.properties || 0, icon: MdHome, path: "/admin/properties" },
-            { title: "Users", count: stats?.users || 0, icon: FaUsers },
-            { title: "Bookings", count: stats?.bookings || 0, icon: FaCalendarAlt },
-            { title: "Revenue", count: "$24.5K", icon: FaCreditCard }
-          ].map((stat, index) => {
-            const Icon = stat.icon;
+            { 
+              title: "Total Revenue", 
+              count: "$24,580", 
+              icon: FaCreditCard, 
+              color: "from-green-500 to-emerald-600",
+              change: "+12.5%"
+            },
+            { 
+              title: "Active Bookings", 
+              count: stats?.bookings || 0, 
+              icon: FaCalendarAlt, 
+              color: "from-blue-500 to-cyan-600",
+              change: "+8.2%"
+            },
+            { 
+              title: "Total Users", 
+              count: stats?.users || 0, 
+              icon: FaUsers, 
+              color: "from-purple-500 to-pink-600",
+              change: "+15.3%"
+            },
+            { 
+              title: "Total Listings", 
+              count: (stats?.hotels || 0) + (stats?.cars || 0) + (stats?.events || 0) + (stats?.tours || 0) + (stats?.properties || 0), 
+              icon: FaGlobe, 
+              color: "from-orange-500 to-red-600",
+              change: "+6.7%"
+            }
+          ].map((metric, index) => {
+            const Icon = metric.icon;
             return (
               <motion.div
                 key={index}
@@ -1889,21 +1910,51 @@ const AdminDashboard = () => {
                 transition={{ delay: index * 0.1 }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20 hover:shadow-xl transition-all duration-300"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-800">{stat.count}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 bg-gradient-to-r ${metric.color} rounded-xl flex items-center justify-center`}>
+                    <Icon className="text-xl text-white" />
                   </div>
-                  <Icon className="text-2xl text-emerald-500" />
+                  <span className="text-green-600 text-sm font-medium">{metric.change}</span>
                 </div>
-                {stat.path && (
-                  <Link 
-                    to={stat.path}
-                    className="mt-4 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
-                  >
-                    Manage →
-                  </Link>
-                )}
+                <h3 className="text-2xl font-bold text-gray-800 mb-1">{metric.count}</h3>
+                <p className="text-gray-600 text-sm">{metric.title}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+        
+        {/* Service Management Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {[
+            { title: "Hotels", count: stats?.hotels || 0, icon: FaHotel, path: "/admin/hotels", color: "emerald" },
+            { title: "Cars", count: stats?.cars || 0, icon: FaCar, path: "/admin/cars", color: "blue" },
+            { title: "Events", count: stats?.events || 0, icon: MdEventNote, path: "/admin/events", color: "purple" },
+            { title: "Tours", count: stats?.tours || 0, icon: MdTour, path: "/admin/tours", color: "orange" },
+            { title: "Properties", count: stats?.properties || 0, icon: MdHome, path: "/admin/properties", color: "pink" },
+            { title: "All Bookings", count: stats?.bookings || 0, icon: FaCalendarAlt, path: "/admin/bookings", color: "indigo" }
+          ].map((service, index) => {
+            const Icon = service.icon;
+            return (
+              <motion.div
+                key={index}
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20 hover:shadow-xl transition-all duration-300 group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 bg-${service.color}-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="text-xl text-white" />
+                  </div>
+                  <span className="text-3xl font-bold text-gray-800">{service.count}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">{service.title}</h3>
+                <Link 
+                  to={service.path}
+                  className={`block w-full py-2 px-4 bg-${service.color}-500 text-white text-center rounded-lg hover:bg-${service.color}-600 transition-colors`}
+                >
+                  Manage {service.title}
+                </Link>
               </motion.div>
             );
           })}
@@ -1914,70 +1965,81 @@ const AdminDashboard = () => {
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.3 }}
             className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20"
           >
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h2>
-            <div className="grid grid-cols-1 gap-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+              <HiSparkles className="mr-2 text-emerald-500" />
+              Quick Actions
+            </h2>
+            <div className="space-y-4">
               <button
                 onClick={initSampleData}
-                className="p-4 bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-left"
+                className="w-full p-4 bg-gradient-to-r from-emerald-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-left group"
               >
                 <div className="flex items-center space-x-3">
-                  <FaPlus />
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FaPlus className="text-white" />
+                  </div>
                   <div>
-                    <h3 className="font-semibold">Initialize Sample Data</h3>
-                    <p className="text-sm opacity-90">Add Sierra Leone hotels, tours, and events</p>
+                    <h3 className="font-semibold">Initialize Sierra Leone Data</h3>
+                    <p className="text-sm opacity-90">Add authentic hotels, tours, events & more</p>
                   </div>
                 </div>
               </button>
               
-              <Link
-                to="/admin/hotels"
-                className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-left block"
-              >
-                <div className="flex items-center space-x-3">
-                  <FaHotel />
-                  <div>
-                    <h3 className="font-semibold">Manage Hotels</h3>
-                    <p className="text-sm opacity-90">Add, edit, and delete hotel listings</p>
-                  </div>
-                </div>
-              </Link>
-              
-              <Link
-                to="/admin/bookings"
-                className="p-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-left block"
-              >
-                <div className="flex items-center space-x-3">
-                  <FaHistory />
-                  <div>
-                    <h3 className="font-semibold">View All Bookings</h3>
-                    <p className="text-sm opacity-90">Monitor and manage customer bookings</p>
-                  </div>
-                </div>
-              </Link>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Link
+                  to="/admin/hotels"
+                  className="p-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-center block group"
+                >
+                  <FaHotel className="mx-auto mb-2 text-lg group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Add Hotels</span>
+                </Link>
+                
+                <Link
+                  to="/admin/tours"
+                  className="p-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-center block group"
+                >
+                  <MdTour className="mx-auto mb-2 text-lg group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium">Add Tours</span>
+                </Link>
+              </div>
             </div>
           </motion.div>
 
-          {/* Recent Bookings */}
+          {/* Recent Activity */}
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
             className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20"
           >
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Bookings</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+              <FaHistory className="mr-2 text-blue-500" />
+              Recent Bookings
+            </h2>
             {stats?.recent_bookings?.length > 0 ? (
               <div className="space-y-4">
-                {stats.recent_bookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{booking.service_name}</h3>
-                      <p className="text-gray-600 text-sm">{booking.service_type}</p>
+                {stats.recent_bookings.slice(0, 4).map((booking, index) => (
+                  <motion.div
+                    key={booking.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 * index }}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                        <FaCalendarAlt className="text-white text-sm" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-800 text-sm">{booking.service_name}</h4>
+                        <p className="text-xs text-gray-600 capitalize">{booking.service_type}</p>
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-emerald-600">${booking.total_price}</p>
+                      <p className="font-bold text-emerald-600 text-sm">${booking.total_price}</p>
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         booking.payment_status === 'paid' 
                           ? 'bg-green-100 text-green-800' 
@@ -1986,17 +2048,57 @@ const AdminDashboard = () => {
                         {booking.payment_status}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
+                <Link 
+                  to="/admin/bookings"
+                  className="block w-full text-center py-2 text-emerald-600 hover:text-emerald-700 font-medium text-sm"
+                >
+                  View All Bookings →
+                </Link>
               </div>
             ) : (
               <div className="text-center py-8">
-                <FaCalendarAlt className="text-4xl text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">No recent bookings</p>
+                <FaCalendarAlt className="text-4xl text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-600 mb-4">No recent bookings</p>
+                <p className="text-sm text-gray-500">Start by adding sample data to see bookings here</p>
               </div>
             )}
           </motion.div>
         </div>
+
+        {/* Platform Overview */}
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/20"
+        >
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Platform Overview</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaGlobe className="text-2xl text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Sierra Leone Focus</h3>
+              <p className="text-gray-600 text-sm">Authentic local experiences across all 16 districts</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HiSparkles className="text-2xl text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">AI-Powered</h3>
+              <p className="text-gray-600 text-sm">Smart trip planning with local insights</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaCreditCard className="text-2xl text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Secure Payments</h3>
+              <p className="text-gray-600 text-sm">Stripe integration for safe transactions</p>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
