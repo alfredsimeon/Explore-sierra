@@ -2049,6 +2049,56 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            
+            {/* Admin Management Routes */}
+            <Route 
+              path="/admin/hotels" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminServiceManagement serviceType="hotel" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/cars" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminServiceManagement serviceType="car" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/events" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminServiceManagement serviceType="event" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/tours" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminServiceManagement serviceType="tour" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/properties" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminServiceManagement serviceType="real-estate" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/bookings" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminBookingsManagement />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </div>
       </BrowserRouter>
