@@ -41,7 +41,7 @@ api_router = APIRouter(prefix="/api")
 # Security
 security = HTTPBearer()
 
-# Models
+# Enhanced Models
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: str
@@ -79,7 +79,9 @@ class Hotel(BaseModel):
     price_per_night: float
     rating: float = 0.0
     reviews_count: int = 0
+    reviews: List[Dict[str, Any]] = []
     available: bool = True
+    contact_info: Dict[str, str] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Car(BaseModel):
@@ -97,6 +99,10 @@ class Car(BaseModel):
     fuel_type: str  # "Petrol", "Diesel"
     seats: int
     available: bool = True
+    rating: float = 0.0
+    reviews_count: int = 0
+    reviews: List[Dict[str, Any]] = []
+    contact_info: Dict[str, str] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Event(BaseModel):
@@ -113,6 +119,10 @@ class Event(BaseModel):
     current_attendees: int = 0
     organizer: str
     available: bool = True
+    rating: float = 0.0
+    reviews_count: int = 0
+    reviews: List[Dict[str, Any]] = []
+    contact_info: Dict[str, str] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Tour(BaseModel):
@@ -128,6 +138,10 @@ class Tour(BaseModel):
     difficulty_level: str  # "Easy", "Moderate", "Challenging"
     tour_type: str  # "Cultural", "Adventure", "Beach", "Historical"
     available: bool = True
+    rating: float = 0.0
+    reviews_count: int = 0
+    reviews: List[Dict[str, Any]] = []
+    contact_info: Dict[str, str] = {}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class RealEstate(BaseModel):
@@ -145,13 +159,25 @@ class RealEstate(BaseModel):
     features: List[str]
     available: bool = True
     contact_info: Dict[str, str]
+    rating: float = 0.0
+    reviews_count: int = 0
+    reviews: List[Dict[str, Any]] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class BookingRequest(BaseModel):
+    service_type: str  # "hotel", "car", "event", "tour"
+    service_id: str
+    start_date: str
+    end_date: Optional[str] = None
+    guests: int = 1
+    special_requests: Optional[str] = None
 
 class Booking(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     service_type: str  # "hotel", "car", "event", "tour"
     service_id: str
+    service_name: str
     booking_date: datetime = Field(default_factory=datetime.utcnow)
     start_date: datetime
     end_date: Optional[datetime] = None
@@ -159,7 +185,14 @@ class Booking(BaseModel):
     total_price: float
     payment_status: str = "pending"  # "pending", "paid", "refunded"
     payment_intent_id: Optional[str] = None
+    stripe_payment_id: Optional[str] = None
     status: str = "confirmed"  # "confirmed", "cancelled"
+    special_requests: Optional[str] = None
+
+class PaymentRequest(BaseModel):
+    booking_id: str
+    amount: float
+    currency: str = "usd"
 
 class TripPlan(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -337,6 +370,18 @@ async def create_hotel(hotel: Hotel, admin = Depends(verify_admin)):
     await db.hotels.insert_one(hotel.dict())
     return hotel
 
+@api_router.put("/hotels/{hotel_id}", response_model=Hotel)
+async def update_hotel(hotel_id: str, hotel: Hotel, admin = Depends(verify_admin)):
+    await db.hotels.update_one({"id": hotel_id}, {"$set": hotel.dict()})
+    return hotel
+
+@api_router.delete("/hotels/{hotel_id}")
+async def delete_hotel(hotel_id: str, admin = Depends(verify_admin)):
+    result = await db.hotels.delete_one({"id": hotel_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Hotel not found")
+    return {"message": "Hotel deleted successfully"}
+
 # Cars Routes
 @api_router.get("/cars", response_model=List[Car])
 async def get_cars():
@@ -355,16 +400,47 @@ async def create_car(car: Car, admin = Depends(verify_admin)):
     await db.cars.insert_one(car.dict())
     return car
 
+@api_router.put("/cars/{car_id}", response_model=Car)
+async def update_car(car_id: str, car: Car, admin = Depends(verify_admin)):
+    await db.cars.update_one({"id": car_id}, {"$set": car.dict()})
+    return car
+
+@api_router.delete("/cars/{car_id}")
+async def delete_car(car_id: str, admin = Depends(verify_admin)):
+    result = await db.cars.delete_one({"id": car_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Car not found")
+    return {"message": "Car deleted successfully"}
+
 # Events Routes
 @api_router.get("/events", response_model=List[Event])
 async def get_events():
     events = await db.events.find({"available": True}).to_list(100)
     return [Event(**event) for event in events]
 
+@api_router.get("/events/{event_id}", response_model=Event)
+async def get_event(event_id: str):
+    event = await db.events.find_one({"id": event_id})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return Event(**event)
+
 @api_router.post("/events", response_model=Event)
 async def create_event(event: Event, admin = Depends(verify_admin)):
     await db.events.insert_one(event.dict())
     return event
+
+@api_router.put("/events/{event_id}", response_model=Event)
+async def update_event(event_id: str, event: Event, admin = Depends(verify_admin)):
+    await db.events.update_one({"id": event_id}, {"$set": event.dict()})
+    return event
+
+@api_router.delete("/events/{event_id}")
+async def delete_event(event_id: str, admin = Depends(verify_admin)):
+    result = await db.events.delete_one({"id": event_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"message": "Event deleted successfully"}
 
 # Tours Routes
 @api_router.get("/tours", response_model=List[Tour])
@@ -372,10 +448,29 @@ async def get_tours():
     tours = await db.tours.find({"available": True}).to_list(100)
     return [Tour(**tour) for tour in tours]
 
+@api_router.get("/tours/{tour_id}", response_model=Tour)
+async def get_tour(tour_id: str):
+    tour = await db.tours.find_one({"id": tour_id})
+    if not tour:
+        raise HTTPException(status_code=404, detail="Tour not found")
+    return Tour(**tour)
+
 @api_router.post("/tours", response_model=Tour)
 async def create_tour(tour: Tour, admin = Depends(verify_admin)):
     await db.tours.insert_one(tour.dict())
     return tour
+
+@api_router.put("/tours/{tour_id}", response_model=Tour)
+async def update_tour(tour_id: str, tour: Tour, admin = Depends(verify_admin)):
+    await db.tours.update_one({"id": tour_id}, {"$set": tour.dict()})
+    return tour
+
+@api_router.delete("/tours/{tour_id}")
+async def delete_tour(tour_id: str, admin = Depends(verify_admin)):
+    result = await db.tours.delete_one({"id": tour_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tour not found")
+    return {"message": "Tour deleted successfully"}
 
 # Real Estate Routes
 @api_router.get("/real-estate", response_model=List[RealEstate])
@@ -383,10 +478,29 @@ async def get_real_estate():
     properties = await db.real_estate.find({"available": True}).to_list(100)
     return [RealEstate(**prop) for prop in properties]
 
+@api_router.get("/real-estate/{property_id}", response_model=RealEstate)
+async def get_property(property_id: str):
+    property = await db.real_estate.find_one({"id": property_id})
+    if not property:
+        raise HTTPException(status_code=404, detail="Property not found")
+    return RealEstate(**property)
+
 @api_router.post("/real-estate", response_model=RealEstate)
 async def create_property(property: RealEstate, admin = Depends(verify_admin)):
     await db.real_estate.insert_one(property.dict())
     return property
+
+@api_router.put("/real-estate/{property_id}", response_model=RealEstate)
+async def update_property(property_id: str, property: RealEstate, admin = Depends(verify_admin)):
+    await db.real_estate.update_one({"id": property_id}, {"$set": property.dict()})
+    return property
+
+@api_router.delete("/real-estate/{property_id}")
+async def delete_property(property_id: str, admin = Depends(verify_admin)):
+    result = await db.real_estate.delete_one({"id": property_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Property not found")
+    return {"message": "Property deleted successfully"}
 
 # AI Trip Planner Route
 @api_router.post("/ai-trip-planner", response_model=TripPlan)
@@ -401,39 +515,139 @@ async def create_trip_plan(
     return trip_plan
 
 # Booking Routes
-@api_router.post("/bookings", response_model=Booking)
-async def create_booking(booking: Booking, user = Depends(verify_token)):
-    booking.user_id = user["id"]
+@api_router.post("/bookings/create", response_model=Booking)
+async def create_booking(booking_request: BookingRequest, user = Depends(verify_token)):
+    # Get service details
+    service_collection = f"{booking_request.service_type}s"
+    service = await db[service_collection].find_one({"id": booking_request.service_id})
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    
+    # Calculate total price
+    start_date = datetime.fromisoformat(booking_request.start_date)
+    end_date = datetime.fromisoformat(booking_request.end_date) if booking_request.end_date else start_date
+    
+    if booking_request.service_type == "hotel":
+        days = (end_date - start_date).days or 1
+        total_price = service["price_per_night"] * days * booking_request.guests
+    elif booking_request.service_type == "car":
+        days = (end_date - start_date).days or 1
+        total_price = service["price_per_day"] * days
+    elif booking_request.service_type == "event":
+        total_price = service["price"] * booking_request.guests
+    elif booking_request.service_type == "tour":
+        total_price = service["price_per_person"] * booking_request.guests
+    
+    # Create booking
+    booking = Booking(
+        user_id=user["id"],
+        service_type=booking_request.service_type,
+        service_id=booking_request.service_id,
+        service_name=service["name"],
+        start_date=start_date,
+        end_date=end_date,
+        guests=booking_request.guests,
+        total_price=total_price,
+        special_requests=booking_request.special_requests
+    )
+    
     await db.bookings.insert_one(booking.dict())
     return booking
+
+@api_router.get("/bookings/{booking_id}", response_model=Booking)
+async def get_booking(booking_id: str, user = Depends(verify_token)):
+    booking = await db.bookings.find_one({"id": booking_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check if user owns this booking or is admin
+    if booking["user_id"] != user["id"] and user.get("user_type") != "admin":
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return Booking(**booking)
 
 @api_router.get("/my-bookings", response_model=List[Booking])
 async def get_my_bookings(user = Depends(verify_token)):
     bookings = await db.bookings.find({"user_id": user["id"]}).to_list(100)
     return [Booking(**booking) for booking in bookings]
 
+@api_router.get("/admin/bookings", response_model=List[Booking])
+async def get_all_bookings(admin = Depends(verify_admin)):
+    bookings = await db.bookings.find({}).to_list(1000)
+    return [Booking(**booking) for booking in bookings]
+
 # Payment Routes
-@api_router.post("/create-payment-intent")
-async def create_payment_intent(amount: float, currency: str = "usd"):
+@api_router.post("/payments/create-intent")
+async def create_payment_intent(payment_request: PaymentRequest, user = Depends(verify_token)):
     try:
+        # Get booking
+        booking = await db.bookings.find_one({"id": payment_request.booking_id})
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        
+        if booking["user_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Create Stripe payment intent
         intent = stripe.PaymentIntent.create(
-            amount=int(amount * 100),  # Stripe uses cents
-            currency=currency,
-            metadata={"platform": "sierra_explore"}
+            amount=int(payment_request.amount * 100),  # Stripe uses cents
+            currency=payment_request.currency,
+            metadata={
+                "platform": "sierra_explore",
+                "booking_id": payment_request.booking_id,
+                "user_id": user["id"]
+            }
         )
+        
+        # Update booking with payment intent
+        await db.bookings.update_one(
+            {"id": payment_request.booking_id},
+            {"$set": {"payment_intent_id": intent.id}}
+        )
+        
         return {"client_secret": intent.client_secret}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# Initialize with sample data
+@api_router.post("/payments/confirm")
+async def confirm_payment(payment_intent_id: str, user = Depends(verify_token)):
+    try:
+        # Retrieve payment intent from Stripe
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        
+        if intent.status == "succeeded":
+            # Update booking status
+            booking_id = intent.metadata.get("booking_id")
+            await db.bookings.update_one(
+                {"id": booking_id},
+                {"$set": {
+                    "payment_status": "paid",
+                    "stripe_payment_id": payment_intent_id
+                }}
+            )
+            
+            return {"status": "success", "message": "Payment confirmed"}
+        else:
+            return {"status": "failed", "message": "Payment not completed"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Initialize with comprehensive Sierra Leone sample data
 @api_router.post("/admin/init-sample-data")
 async def init_sample_data(admin = Depends(verify_admin)):
-    # Sample Sierra Leone locations
+    # Sierra Leone locations
     freetown_location = Location(
         district="Western Area",
         city="Freetown",
         area="Aberdeen",
         coordinates={"lat": 8.4840, "lng": -13.2299}
+    )
+    
+    lumley_location = Location(
+        district="Western Area", 
+        city="Freetown",
+        area="Lumley",
+        coordinates={"lat": 8.4667, "lng": -13.2833}
     )
     
     bo_location = Location(
@@ -442,35 +656,336 @@ async def init_sample_data(admin = Depends(verify_admin)):
         coordinates={"lat": 7.9644, "lng": -11.7383}
     )
     
-    # Sample hotels
+    kenema_location = Location(
+        district="Kenema",
+        city="Kenema", 
+        coordinates={"lat": 7.8767, "lng": -11.1900}
+    )
+    
+    tokeh_location = Location(
+        district="Western Area",
+        city="Freetown",
+        area="Tokeh",
+        coordinates={"lat": 8.3000, "lng": -13.1500}
+    )
+    
+    # Sample Hotels
     sample_hotels = [
         Hotel(
             name="Radisson Blu Mammy Yoko Hotel",
-            description="Luxury beachfront hotel in Aberdeen with stunning ocean views",
+            description="Luxury beachfront hotel in Aberdeen with stunning ocean views, infinity pool, and world-class amenities. Experience the best of Sierra Leone hospitality.",
             location=freetown_location,
             images=[],
-            amenities=["WiFi", "Pool", "Restaurant", "Beach Access", "Spa"],
-            room_types=[{"type": "Standard", "price": 150}, {"type": "Suite", "price": 250}],
+            amenities=["WiFi", "Pool", "Restaurant", "Beach Access", "Spa", "Conference Rooms", "Fitness Center", "Room Service"],
+            room_types=[
+                {"type": "Standard Room", "price": 150, "description": "Comfortable room with city view"},
+                {"type": "Ocean View Suite", "price": 250, "description": "Luxury suite with ocean view and balcony"},
+                {"type": "Presidential Suite", "price": 400, "description": "Ultimate luxury with panoramic views"}
+            ],
             price_per_night=150.0,
-            rating=4.5
+            rating=4.5,
+            reviews_count=142,
+            reviews=[
+                {"user": "John D.", "rating": 5, "comment": "Amazing ocean views and excellent service!", "date": "2024-11-15"},
+                {"user": "Sarah M.", "rating": 4, "comment": "Beautiful hotel, great location for exploring Freetown", "date": "2024-11-10"}
+            ],
+            contact_info={"phone": "+232 22 229 600", "email": "info@radissonblu.sl"}
         ),
         Hotel(
             name="Country Lodge Complex",
-            description="Comfortable accommodation in the heart of Freetown",
+            description="Comfortable accommodation in the heart of Freetown with traditional Sierra Leonean hospitality and modern amenities.",
             location=freetown_location,
             images=[],
-            amenities=["WiFi", "Restaurant", "Parking", "Conference Rooms"],
-            room_types=[{"type": "Standard", "price": 80}, {"type": "Deluxe", "price": 120}],
+            amenities=["WiFi", "Restaurant", "Parking", "Conference Rooms", "Garden", "Bar"],
+            room_types=[
+                {"type": "Standard Room", "price": 80, "description": "Cozy room with garden view"},
+                {"type": "Deluxe Room", "price": 120, "description": "Spacious room with modern amenities"}
+            ],
             price_per_night=80.0,
-            rating=4.0
+            rating=4.0,
+            reviews_count=89,
+            contact_info={"phone": "+232 22 240 918", "email": "reservations@countrylodge.sl"}
+        ),
+        Hotel(
+            name="Tokeh Sands Beach Resort", 
+            description="Beachfront paradise on Tokeh Beach with pristine white sand, crystal clear waters, and authentic local cuisine.",
+            location=tokeh_location,
+            images=[],
+            amenities=["Beach Access", "Restaurant", "Bar", "WiFi", "Water Sports", "Local Tours"],
+            room_types=[
+                {"type": "Beach Bungalow", "price": 120, "description": "Traditional bungalow steps from the beach"},
+                {"type": "Ocean Villa", "price": 200, "description": "Luxury villa with private beach access"}
+            ],
+            price_per_night=120.0,
+            rating=4.3,
+            reviews_count=67,
+            contact_info={"phone": "+232 77 123 456", "email": "info@tokehsands.sl"}
+        ),
+        Hotel(
+            name="Bo Heritage Hotel",
+            description="Historic hotel in Bo showcasing Sierra Leone's cultural heritage with modern comfort and traditional charm.",
+            location=bo_location,
+            images=[],
+            amenities=["WiFi", "Restaurant", "Cultural Center", "Parking", "Conference Rooms"],
+            room_types=[
+                {"type": "Heritage Room", "price": 60, "description": "Room with traditional decor"},
+                {"type": "Modern Suite", "price": 90, "description": "Contemporary suite with cultural touches"}
+            ],
+            price_per_night=60.0,
+            rating=3.9,
+            reviews_count=45,
+            contact_info={"phone": "+232 32 270 123", "email": "reservations@boheritage.sl"}
         )
     ]
     
-    # Insert sample data
+    # Sample Cars
+    sample_cars = [
+        Car(
+            name="Toyota Landcruiser - Adventure Ready",
+            brand="Toyota",
+            model="Land Cruiser",
+            year=2022,
+            description="Perfect for exploring Sierra Leone's diverse terrain. Reliable 4WD vehicle ideal for beach trips to Tokeh, mountain adventures, and city touring.",
+            location=freetown_location,
+            images=[],
+            features=["4WD", "GPS Navigation", "Air Conditioning", "Safety Kit", "Tool Kit", "Spare Tire"],
+            price_per_day=85.0,
+            transmission="Automatic",
+            fuel_type="Diesel",
+            seats=7,
+            rating=4.6,
+            reviews_count=34,
+            contact_info={"phone": "+232 77 456 789", "email": "rentals@sierraauto.sl"}
+        ),
+        Car(
+            name="Honda Civic - City Explorer",
+            brand="Honda", 
+            model="Civic",
+            year=2021,
+            description="Comfortable and fuel-efficient car perfect for exploring Freetown and nearby attractions. Great for couples and small families.",
+            location=freetown_location,
+            images=[],
+            features=["Air Conditioning", "GPS", "Bluetooth", "USB Charging", "Safety Kit"],
+            price_per_day=45.0,
+            transmission="Automatic",
+            fuel_type="Petrol",
+            seats=5,
+            rating=4.2,
+            reviews_count=78,
+            contact_info={"phone": "+232 77 456 789", "email": "rentals@sierraauto.sl"}
+        ),
+        Car(
+            name="Suzuki Jimny - Off-Road Champion",
+            brand="Suzuki",
+            model="Jimny", 
+            year=2023,
+            description="Compact 4WD vehicle perfect for adventurous travelers. Ideal for reaching remote beaches and mountain villages.",
+            location=bo_location,
+            images=[],
+            features=["4WD", "Manual Transmission", "Tool Kit", "First Aid Kit", "Compact Size"],
+            price_per_day=35.0,
+            transmission="Manual",
+            fuel_type="Petrol", 
+            seats=4,
+            rating=4.4,
+            reviews_count=23,
+            contact_info={"phone": "+232 32 456 123", "email": "rental@bo-cars.sl"}
+        )
+    ]
+    
+    # Sample Tours
+    sample_tours = [
+        Tour(
+            name="Banana Islands Paradise Tour",
+            description="3-day island hopping adventure to the pristine Banana Islands. Experience untouched beaches, snorkeling, local fishing villages, and Sierra Leone's best-kept secret.",
+            destinations=[
+                Location(district="Western Area", city="Banana Islands", coordinates={"lat": 8.1667, "lng": -13.0833}),
+                freetown_location
+            ],
+            duration_days=3,
+            images=[],
+            included=["Boat transfers", "2 nights accommodation", "All meals", "Snorkeling gear", "Local guide", "Village tour"],
+            price_per_person=285.0,
+            max_group_size=12,
+            difficulty_level="Easy",
+            tour_type="Beach",
+            rating=4.8,
+            reviews_count=56,
+            contact_info={"phone": "+232 77 888 999", "email": "tours@sierraadventures.sl"}
+        ),
+        Tour(
+            name="Bunce Island Historical Experience",
+            description="Half-day tour to Bunce Island, a significant historical site in the transatlantic slave trade. Learn about Sierra Leone's complex history with expert guides.",
+            destinations=[
+                Location(district="Western Area", city="Bunce Island", coordinates={"lat": 8.6167, "lng": -13.0833}),
+                freetown_location
+            ],
+            duration_days=1,
+            images=[],
+            included=["Boat transfer", "Expert historian guide", "Lunch", "Museum visit"],
+            price_per_person=65.0,
+            max_group_size=20,
+            difficulty_level="Easy", 
+            tour_type="Historical",
+            rating=4.7,
+            reviews_count=123,
+            contact_info={"phone": "+232 77 777 888", "email": "history@sierratours.sl"}
+        ),
+        Tour(
+            name="Freetown Peninsula Cultural Trek", 
+            description="5-day cultural immersion through Freetown Peninsula. Visit local communities, learn traditional crafts, enjoy authentic cuisine, and experience real Sierra Leonean culture.",
+            destinations=[freetown_location, lumley_location, tokeh_location],
+            duration_days=5,
+            images=[],
+            included=["4 nights accommodation", "All meals", "Cultural workshops", "Local transportation", "Community visits", "Traditional performances"],
+            price_per_person=395.0,
+            max_group_size=8,
+            difficulty_level="Moderate",
+            tour_type="Cultural",
+            rating=4.9,
+            reviews_count=41,
+            contact_info={"phone": "+232 77 999 000", "email": "culture@sierraimmersion.sl"}
+        )
+    ]
+    
+    # Sample Events
+    sample_events = [
+        Event(
+            name="Freetown Music Festival",
+            description="Annual celebration of Sierra Leone's vibrant music scene featuring local and international artists, traditional performances, and modern fusion.",
+            location=freetown_location,
+            date=datetime(2025, 8, 15, 18, 0),
+            end_date=datetime(2025, 8, 17, 23, 0),
+            images=[],
+            category="Music",
+            price=25.0,
+            max_attendees=5000,
+            current_attendees=1250,
+            organizer="Sierra Leone Music Association",
+            rating=4.6,
+            reviews_count=89,
+            contact_info={"phone": "+232 77 111 222", "email": "info@freetownmusic.sl"}
+        ),
+        Event(
+            name="Krio Cultural Festival",
+            description="Celebrate Sierra Leone's rich Krio heritage with traditional food, music, dance, and storytelling. A colorful display of local culture and traditions.",
+            location=freetown_location,
+            date=datetime(2025, 7, 20, 10, 0),
+            end_date=datetime(2025, 7, 22, 20, 0),
+            images=[],
+            category="Cultural",
+            price=15.0,
+            max_attendees=2000,
+            current_attendees=670,
+            organizer="Krio Heritage Foundation",
+            rating=4.8,
+            reviews_count=156,
+            contact_info={"phone": "+232 77 333 444", "email": "heritage@krio.sl"}
+        ),
+        Event(
+            name="Tokeh Beach Festival",
+            description="Beach celebration with local bands, traditional fishing demonstrations, surfing competitions, and the freshest seafood in Sierra Leone.",
+            location=tokeh_location,
+            date=datetime(2025, 9, 5, 14, 0),
+            end_date=datetime(2025, 9, 7, 22, 0),
+            images=[],
+            category="Festival",
+            price=30.0,
+            max_attendees=1500,
+            current_attendees=450,
+            organizer="Tokeh Community Association",
+            rating=4.4,
+            reviews_count=67,
+            contact_info={"phone": "+232 77 555 666", "email": "festival@tokeh.sl"}
+        )
+    ]
+    
+    # Sample Real Estate
+    sample_properties = [
+        RealEstate(
+            title="Luxury Beachfront Villa - Aberdeen",
+            description="Stunning 4-bedroom villa with direct beach access, infinity pool, and panoramic ocean views. Perfect for vacation rental or permanent residence.",
+            location=freetown_location,
+            property_type="House",
+            listing_type="Sale",
+            price=450000.0,
+            bedrooms=4,
+            bathrooms=3,
+            area_sqm=320.0,
+            images=[],
+            features=["Beach Access", "Pool", "Garden", "Parking", "Security", "Modern Kitchen", "Ocean Views"],
+            contact_info={"phone": "+232 77 123 987", "email": "sales@sierraproperty.sl", "agent": "Mohamed Kamara"}
+        ),
+        RealEstate(
+            title="Modern Apartment - Central Freetown",
+            description="Contemporary 2-bedroom apartment in the heart of Freetown. Walking distance to markets, restaurants, and business district.",
+            location=freetown_location,
+            property_type="Apartment",
+            listing_type="Rent",
+            price=800.0,  # Monthly rent
+            bedrooms=2,
+            bathrooms=2,
+            area_sqm=95.0,
+            images=[],
+            features=["Air Conditioning", "WiFi", "Parking", "Security", "City Views", "Modern Appliances"],
+            contact_info={"phone": "+232 77 456 321", "email": "rentals@freetownhomes.sl", "agent": "Fatima Sesay"}
+        ),
+        RealEstate(
+            title="Commercial Land - Bo Business District",
+            description="Prime commercial land in Bo's growing business district. Perfect for hotel, shopping center, or office complex development.",
+            location=bo_location,
+            property_type="Land",
+            listing_type="Sale",
+            price=125000.0,
+            area_sqm=2500.0,
+            images=[],
+            features=["Prime Location", "Commercial Zoning", "Road Access", "Utilities Available", "Development Ready"],
+            contact_info={"phone": "+232 32 789 456", "email": "commercial@bo-land.sl", "agent": "Abdul Rahman"}
+        )
+    ]
+    
+    # Insert all sample data
     for hotel in sample_hotels:
         await db.hotels.insert_one(hotel.dict())
     
-    return {"message": "Sample data initialized successfully"}
+    for car in sample_cars:
+        await db.cars.insert_one(car.dict())
+    
+    for tour in sample_tours:
+        await db.tours.insert_one(tour.dict())
+    
+    for event in sample_events:
+        await db.events.insert_one(event.dict())
+    
+    for property in sample_properties:
+        await db.real_estate.insert_one(property.dict())
+    
+    return {"message": "Comprehensive Sierra Leone sample data initialized successfully"}
+
+# Statistics for admin dashboard
+@api_router.get("/admin/stats")
+async def get_admin_stats(admin = Depends(verify_admin)):
+    hotel_count = await db.hotels.count_documents({"available": True})
+    car_count = await db.cars.count_documents({"available": True}) 
+    event_count = await db.events.count_documents({"available": True})
+    tour_count = await db.tours.count_documents({"available": True})
+    property_count = await db.real_estate.count_documents({"available": True})
+    user_count = await db.users.count_documents({"user_type": "user"})
+    booking_count = await db.bookings.count_documents({})
+    
+    # Recent bookings
+    recent_bookings = await db.bookings.find({}).sort("booking_date", -1).limit(5).to_list(5)
+    
+    return {
+        "hotels": hotel_count,
+        "cars": car_count, 
+        "events": event_count,
+        "tours": tour_count,
+        "properties": property_count,
+        "users": user_count,
+        "bookings": booking_count,
+        "recent_bookings": recent_bookings
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
