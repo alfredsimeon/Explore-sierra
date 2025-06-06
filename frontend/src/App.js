@@ -6,6 +6,7 @@ import { FaSearch, FaHotel, FaCar, FaCalendarAlt, FaMapMarkerAlt, FaUser, FaSign
 import { MdEventNote, MdTour, MdHome, MdDashboard } from "react-icons/md";
 import { HiSparkles } from "react-icons/hi";
 import { loadStripe } from '@stripe/stripe-js';
+import { AdminServiceManagement, AdminBookingsManagement } from './AdminManagement';
 import axios from "axios";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
